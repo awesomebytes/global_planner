@@ -180,6 +180,32 @@ void GlobalPlanner::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, uns
 
     //set the associated costs in the cost map to be free
     costmap_->setCost(mx, my, costmap_2d::FREE_SPACE);
+
+    // HACK: clear the robot_radius too, as of now we have 0.2m
+    // and every cell is 0.05m, so we want to clear 4px all around
+    // but just to be safe, lets clear 5px
+    // This should be all parametrized from a robot_radius param...
+    int radius_pixels = 5;
+    unsigned int initial_x;
+    unsigned int initial_y;
+    // In case we are on the border of the map...
+    // Note that I'm not taking into account the other borders of the map... oops
+    if (mx < radius_pixels)
+        initial_x = 0;
+    else
+        initial_x = mx - radius_pixels;
+    if (my < radius_pixels)
+        initial_y = 0;
+    else
+        initial_y = my - radius_pixels;
+    // Clear all those cells
+    for (int i = 0; i < radius_pixels; i++)
+        for (int j = 0; j < radius_pixels; j++){
+            costmap_->setCost(initial_x + i, initial_y + j, costmap_2d::FREE_SPACE);
+        }
+
+        
+
 }
 
 bool GlobalPlanner::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp) {
