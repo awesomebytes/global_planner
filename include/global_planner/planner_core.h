@@ -38,6 +38,7 @@
  *         David V. Lu!!
  *********************************************************************/
 #define POT_HIGH 1.0e10        // unassigned cell potential
+#define POT_FIELD_TIMEOUT 1.0  // Timeout of potential field method
 #include <ros/ros.h>
 #include <costmap_2d/costmap_2d.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -53,6 +54,7 @@
 #include <global_planner/traceback.h>
 #include <global_planner/orientation_filter.h>
 #include <global_planner/GlobalPlannerConfig.h>
+#include <angles/angles.h>
 
 namespace global_planner {
 
@@ -170,15 +172,17 @@ class GlobalPlanner : public nav_core::BaseGlobalPlanner {
          * @brief Store a copy of the current costmap in \a costmap.  Called by makePlan.
          */
         costmap_2d::Costmap2D* costmap_;
+        costmap_2d::Costmap2DROS* costmap_ros_;
         std::string frame_id_;
         ros::Publisher plan_pub_;
-        bool initialized_, allow_unknown_;
+        bool initialized_, allow_unknown_, visualize_potential_;
 
     private:
         void mapToWorld(double mx, double my, double& wx, double& wy);
         bool worldToMap(double wx, double wy, double& mx, double& my);
         void clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my);
         void publishPotential(float* potential);
+        bool worldCost(double wx, double wy, unsigned char &cost);
 
         double planner_window_x_, planner_window_y_, default_tolerance_;
         std::string tf_prefix_;
@@ -204,6 +208,15 @@ class GlobalPlanner : public nav_core::BaseGlobalPlanner {
 
         dynamic_reconfigure::Server<global_planner::GlobalPlannerConfig> *dsrv_;
         void reconfigureCB(global_planner::GlobalPlannerConfig &config, uint32_t level);
+
+        unsigned int pot_field_max_cost_;
+
+        std::vector<float> proj_modes;
+
+        double new_goal_x;
+        double new_goal_y;
+        double last_official_goal_x;
+        double last_official_goal_y;
 
 };
 

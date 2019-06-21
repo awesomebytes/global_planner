@@ -89,6 +89,7 @@ GlobalPlanner::~GlobalPlanner() {
 }
 
 void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
+    costmap_ros_ = costmap_ros;
     initialize(name, costmap_ros->getCostmap(), costmap_ros->getGlobalFrameID());
 }
 
@@ -143,6 +144,10 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
         private_nh.param("planner_window_y", planner_window_y_, 0.0);
         private_nh.param("default_tolerance", default_tolerance_, 0.0);
         private_nh.param("publish_scale", publish_scale_, 100);
+        private_nh.param("pot_field_min", publish_scale_, 100);
+
+        double costmap_pub_freq;
+        private_nh.param("planner_costmap_publish_frequency", costmap_pub_freq, 0.0);
 
         //get the tf prefix
         ros::NodeHandle prefix_nh;
@@ -156,6 +161,8 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
         dsrv_->setCallback(cb);
 
         initialized_ = true;
+        last_official_goal_x = 0.;
+        last_official_goal_y = 0.;
     } else
         ROS_WARN("This planner has already been initialized, you can't call it twice, doing nothing");
 
@@ -169,6 +176,7 @@ void GlobalPlanner::reconfigureCB(global_planner::GlobalPlannerConfig& config, u
     publish_potential_ = config.publish_potential;
     orientation_filter_->setMode(config.orientation_mode);
     orientation_filter_->setWindowSize(config.orientation_window_size);
+    pot_field_max_cost_ = config.pot_field_max_cost;
 }
 
 void GlobalPlanner::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my) {
@@ -246,6 +254,15 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                            double tolerance, std::vector<geometry_msgs::PoseStamped>& plan) {
     boost::mutex::scoped_lock lock(mutex_);
+
+    // reset last_official_goal if it diverges
+    if (fabs(last_official_goal_x - goal.pose.position.x) > 0.1 || fabs(last_official_goal_y - goal.pose.position.y) > 0.1) {
+      last_official_goal_x = goal.pose.position.x;
+      last_official_goal_y = goal.pose.position.y;
+      new_goal_x = goal.pose.position.x;
+      new_goal_y = goal.pose.position.y;
+      ROS_DEBUG("NEW GOAL, setting last goal to: %f %f", new_goal_x, new_goal_y);
+    }
     if (!initialized_) {
         ROS_ERROR(
                 "This planner has not been initialized yet, but it is being used, please call initialize() before use");
@@ -257,11 +274,12 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 
     ros::NodeHandle n;
     std::string global_frame = frame_id_;
+    geometry_msgs::PoseStamped goal_ = goal;
 
     //until tf can handle transforming things that are way in the past... we'll require the goal to be in our global frame
-    if (tf::resolve(tf_prefix_, goal.header.frame_id) != tf::resolve(tf_prefix_, global_frame)) {
+    if (tf::resolve(tf_prefix_, goal_.header.frame_id) != tf::resolve(tf_prefix_, global_frame)) {
         ROS_ERROR(
-                "The goal pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", tf::resolve(tf_prefix_, global_frame).c_str(), tf::resolve(tf_prefix_, goal.header.frame_id).c_str());
+                "The goal pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", tf::resolve(tf_prefix_, global_frame).c_str(), tf::resolve(tf_prefix_, goal_.header.frame_id).c_str());
         return false;
     }
 
@@ -270,6 +288,107 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                 "The start pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", tf::resolve(tf_prefix_, global_frame).c_str(), tf::resolve(tf_prefix_, start.header.frame_id).c_str());
         return false;
     }
+
+      // Potential field method to find a cell with a cost
+      // less than or equal given the value pot_field_max_cost.
+      // Fail on timeout
+      unsigned char cur_cost = 255;
+      double cur_world_x = 0.0;
+      double cur_world_y = 0.0;
+
+      float pot_field_target_x = goal.pose.position.x;
+      float pot_field_target_y = goal.pose.position.y;
+      float pot_field_target_phi = 0.0;
+
+      float cur_goal_x = goal.pose.position.x;
+      float cur_goal_y = goal.pose.position.y;
+
+      // Timestamp for timeout check
+      ros::Time begin = ros::Time::now();
+
+      int width = (int) costmap_->getSizeInCellsX();
+      int height = (int) costmap_->getSizeInCellsY();
+
+      int max_num_cells = tolerance / costmap_->getResolution();
+
+      unsigned int offset_x = 0;
+      unsigned int offset_y = 0;
+
+      unsigned int min_x, max_x;
+      unsigned int min_y, max_y;
+
+      costmap_->worldToMap(cur_goal_x, cur_goal_y, offset_x, offset_y);
+
+      // consider map size limits
+      if ((int)offset_x - (max_num_cells / 2) < 0) {
+        min_x = 0;
+      } else {
+        min_x = offset_x - (max_num_cells / 2);
+      }
+      if ((int)offset_x + (max_num_cells / 2) > width) {
+        max_x = width;
+      } else {
+        max_x = offset_x + (max_num_cells / 2);
+      }
+
+      if ((int)offset_y - (max_num_cells / 2) < 0) {
+        min_y = 0;
+      } else {
+        min_y = offset_y - (max_num_cells / 2);
+      }
+      if ((int)offset_y + (max_num_cells / 2) > height) {
+        max_y = height;
+      } else {
+        max_y = offset_y + (max_num_cells / 2);
+      }
+
+      // update costs and start potential field
+      // calculation if we do not have a reachable goal
+      worldCost(new_goal_x, new_goal_y, cur_cost);
+
+      while(cur_cost > pot_field_max_cost_) {
+        for (int x = min_x; x < max_x; ++x) {
+          for (int y = min_y; y < max_y; ++y) {
+
+            costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
+            if (costmap_->getCost(x, y) < pot_field_max_cost_) {
+              double dx = cur_world_x - goal.pose.position.x;
+              double dy = cur_world_y - goal.pose.position.y;
+
+              if (fabs(dx) >= 0.01 && fabs(dy) >= 0.01) {
+                //Assign a lower factor for objects at larger distances
+                float factor = 1.f / ( (dx*dx + dy*dy) * (dx*dx + dy*dy));
+
+                pot_field_target_x -= factor * dx;
+                pot_field_target_y -= factor * dy;
+              }
+            }
+          }
+        }
+
+        if (ros::Time::now() - begin > ros::Duration(POT_FIELD_TIMEOUT)) {
+            ROS_ERROR_NAMED("global planner", "Failed to find a point via potential field "
+                                              "in the map within %f seconds", POT_FIELD_TIMEOUT);
+            break;
+        }
+
+        pot_field_target_phi = angles::normalize_angle(atan2(pot_field_target_y, pot_field_target_x));
+
+        float cur_x = std::cos(pot_field_target_phi) * (costmap_->getResolution() * 0.5);
+        float cur_y = std::sin(pot_field_target_phi) * (costmap_->getResolution() * 0.5);
+
+        cur_goal_x -= cur_x;
+        cur_goal_y -= cur_y;
+
+        // update the new target goal
+        new_goal_x = cur_goal_x;
+        new_goal_y = cur_goal_y;
+
+        worldCost(cur_goal_x, cur_goal_y, cur_cost);
+    }
+
+    goal_.pose.position.x = new_goal_x;
+    goal_.pose.position.y = new_goal_y;
 
     double wx = start.pose.position.x;
     double wy = start.pose.position.y;
@@ -289,8 +408,8 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
         worldToMap(wx, wy, start_x, start_y);
     }
 
-    wx = goal.pose.position.x;
-    wy = goal.pose.position.y;
+    wx = goal_.pose.position.x;
+    wy = goal_.pose.position.y;
 
     if (!costmap_->worldToMap(wx, wy, goal_x_i, goal_y_i)) {
         ROS_WARN_THROTTLE(1.0,
@@ -329,9 +448,9 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 
     if (found_legal) {
         //extract the plan
-        if (getPlanFromPotential(start_x, start_y, goal_x, goal_y, goal, plan)) {
+        if (getPlanFromPotential(start_x, start_y, goal_x, goal_y, goal_, plan)) {
             //make sure the goal we push on has the same timestamp as the rest of the plan
-            geometry_msgs::PoseStamped goal_copy = goal;
+            geometry_msgs::PoseStamped goal_copy = goal_;
             goal_copy.header.stamp = ros::Time::now();
             plan.push_back(goal_copy);
         } else {
@@ -370,6 +489,19 @@ void GlobalPlanner::publishPlan(const std::vector<geometry_msgs::PoseStamped>& p
     }
 
     plan_pub_.publish(gui_path);
+}
+
+bool GlobalPlanner::worldCost(double wx, double wy, unsigned char &cost) {
+
+  unsigned int wx_int, wy_int;
+
+  if (!costmap_->worldToMap(wx, wy, wx_int, wy_int)) {
+      ROS_ERROR_NAMED("global planner", "Unable to get world to map coordinates for %f, %f -> out of map bounds", wx, wy);
+      return false;
+  }
+
+  cost = costmap_->getCost(wx_int, wy_int);
+  return true;
 }
 
 bool GlobalPlanner::getPlanFromPotential(double start_x, double start_y, double goal_x, double goal_y,
