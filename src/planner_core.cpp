@@ -353,8 +353,9 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 
       if (cur_cost >= 250){
           ROS_INFO_STREAM("Looping over possible reachable pixels as the goal is in obstacle...");
-          for (int x = 0; x < offset_x; x++){
-            for(int y = 0; y < offset_y; y++){
+          bool found_new_goal = false;
+          for (int x = 0; x < (max_num_cells / 2) && !found_new_goal; x++){
+            for(int y = 0; y < (max_num_cells / 2) && !found_new_goal; y++){
                 ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (y + offset_y));
                 costmap_->mapToWorld((x + offset_x), (y + offset_y), cur_world_x, cur_world_y);
                 ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
@@ -364,6 +365,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     ROS_INFO_STREAM("We found a valid cost!");
                     new_goal_x = cur_world_x;
                     new_goal_y = cur_world_y;
+                    found_new_goal = true;
                     break;
                 }
                 
@@ -376,6 +378,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     ROS_INFO_STREAM("We found a valid cost!");
                     new_goal_x = cur_world_x;
                     new_goal_y = cur_world_y;
+                    found_new_goal = true;
                     break;
                 }
 
@@ -388,6 +391,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     ROS_INFO_STREAM("We found a valid cost!");
                     new_goal_x = cur_world_x;
                     new_goal_y = cur_world_y;
+                    found_new_goal = true;
                     break;
                 }
 
@@ -400,6 +404,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     ROS_INFO_STREAM("We found a valid cost!");
                     new_goal_x = cur_world_x;
                     new_goal_y = cur_world_y;
+                    found_new_goal = true;
                     break;
                 }
 
