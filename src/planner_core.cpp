@@ -416,78 +416,8 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
             }
           }
 
-
-          // for (int x = min_x; x < max_x; ++x) {
-          //   for (int y = min_y; y < max_y; ++y) {
-          //       ROS_INFO_STREAM("  x: " << x << " y: " << y);
-
-          //       costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
-          //       ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-          //       float this_cost = costmap_->getCost(x, y);
-          //       ROS_INFO_STREAM("has cost: " << this_cost);
-          //       if (this_cost < pot_field_max_cost_){
-          //           ROS_INFO_STREAM("We found a valid cost!");
-          //           new_goal_x = cur_world_x;
-          //           new_goal_y = cur_world_y;
-          //           break;
-          //       }
-          //   }
-          // }
      }
 
-
-    //   while(cur_cost > pot_field_max_cost_) {
-    //     int iterations = 0;
-    //     for (int x = min_x; x < max_x; ++x) {
-    //         iterations++;
-    //       for (int y = min_y; y < max_y; ++y) {
-    //         iterations++;
-    //         ROS_INFO_STREAM("  x: " << x << " y: " << y);
-
-    //         costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
-    //         if (costmap_->getCost(x, y) < pot_field_max_cost_) {
-    //           double dx = cur_world_x - goal.pose.position.x;
-    //           double dy = cur_world_y - goal.pose.position.y;
-
-    //           if (fabs(dx) >= 0.01 && fabs(dy) >= 0.01) {
-    //             //Assign a lower factor for objects at larger distances
-    //             float factor = 1.f / ( (dx*dx + dy*dy) * (dx*dx + dy*dy));
-
-    //             pot_field_target_x -= factor * dx;
-    //             pot_field_target_y -= factor * dy;
-    //           }
-    //         }
-    //       }
-
-    //     }
-
-    //     if (ros::Time::now() - begin > ros::Duration(POT_FIELD_TIMEOUT)) {
-    //         ROS_ERROR_NAMED("global planner", "Failed to find a point via potential field "
-    //                                           "in the map within %f seconds", POT_FIELD_TIMEOUT);
-    //         break;
-    //     }
-
-    //     if (iterations > 0){
-    //         ROS_INFO_STREAM("pot field target: x: " << pot_field_target_x << " y: " << pot_field_target_y);
-    //         pot_field_target_phi = angles::normalize_angle(atan2(pot_field_target_y, pot_field_target_x));
-
-    //         float cur_x = std::cos(pot_field_target_phi) * (costmap_->getResolution() * 0.5);
-    //         float cur_y = std::sin(pot_field_target_phi) * (costmap_->getResolution() * 0.5);
-
-    //         ROS_INFO_STREAM("(substracting distance is ) cur_x:" << cur_x << " cur_y: " << cur_y);
-
-    //         cur_goal_x -= cur_x;
-    //         cur_goal_y -= cur_y;
-
-    //         // update the new target goal
-    //         new_goal_x = cur_goal_x;
-    //         new_goal_y = cur_goal_y;
-
-    //         ROS_INFO_STREAM("(after applying subs dist) new_goal_x: " << new_goal_x << " new_goal_y: " << new_goal_y);
-
-    //         worldCost(cur_goal_x, cur_goal_y, cur_cost);
-    //     }
-    // }
 
     goal_.pose.position.x = new_goal_x;
     goal_.pose.position.y = new_goal_y;
