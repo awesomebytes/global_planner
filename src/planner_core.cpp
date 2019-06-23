@@ -384,6 +384,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
         }
 
         if (iterations > 0){
+            ROS_INFO_STREAM("pot field target: x: " << pot_field_target_x << " y: " << pot_field_target_y);
             pot_field_target_phi = angles::normalize_angle(atan2(pot_field_target_y, pot_field_target_x));
 
             float cur_x = std::cos(pot_field_target_phi) * (costmap_->getResolution() * 0.5);
@@ -397,6 +398,8 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
             // update the new target goal
             new_goal_x = cur_goal_x;
             new_goal_y = cur_goal_y;
+
+            ROS_INFO_STREAM("(after applying subs dist) new_goal_x: " << new_goal_x << " new_goal_y: " << new_goal_y);
 
             worldCost(cur_goal_x, cur_goal_y, cur_cost);
         }
