@@ -357,9 +357,9 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
           for (int x = 0; x < (max_num_cells / 2) && !found_new_goal; x++){
             for(int y = 0; y < (max_num_cells / 2) && !found_new_goal; y++){
                 ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (y + offset_y));
-                costmap_->mapToWorld((x + offset_x), (y + offset_y), cur_world_x, cur_world_y);
+                costmap_->mapToWorld((offset_x + x), (offset_y + y), cur_world_x, cur_world_y);
                 ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-                float this_cost = costmap_->getCost((x + offset_x), (y + offset_y));
+                float this_cost = costmap_->getCost((offset_x + x), (offset_y + y));
                 ROS_INFO_STREAM("has cost: " << this_cost);
                 if (this_cost < pot_field_max_cost_){
                     ROS_INFO_STREAM("We found a valid cost!");
@@ -369,10 +369,10 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     break;
                 }
                 
-                ROS_INFO_STREAM("  x: " << (x - offset_x) << " y: " << (y - offset_y));
-                costmap_->mapToWorld((x - offset_x), (y - offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("  x: " << (offset_x - x) << " y: " << (offset_y - y));
+                costmap_->mapToWorld((offset_x - x), (offset_y - y), cur_world_x, cur_world_y);
                 ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-                this_cost = costmap_->getCost((x - offset_x), (y - offset_y));
+                this_cost = costmap_->getCost((offset_x - x), (offset_y - y));
                 ROS_INFO_STREAM("has cost: " << this_cost);
                 if (this_cost < pot_field_max_cost_){
                     ROS_INFO_STREAM("We found a valid cost!");
@@ -382,10 +382,10 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     break;
                 }
 
-                ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (y - offset_y));
-                costmap_->mapToWorld((x + offset_x), (y - offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (offset_y - y));
+                costmap_->mapToWorld((offset_x + x), (offset_y - y), cur_world_x, cur_world_y);
                 ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-                this_cost = costmap_->getCost((x + offset_x), (y - offset_y));
+                this_cost = costmap_->getCost((offset_x + x), (offset_y - y));
                 ROS_INFO_STREAM("has cost: " << this_cost);
                 if (this_cost < pot_field_max_cost_){
                     ROS_INFO_STREAM("We found a valid cost!");
@@ -395,10 +395,10 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
                     break;
                 }
 
-                ROS_INFO_STREAM("  x: " << (x - offset_x) << " y: " << (y + offset_y));
-                costmap_->mapToWorld((x - offset_x), (y + offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("  x: " << (offset_x - x) << " y: " << (y + offset_y));
+                costmap_->mapToWorld((offset_x - x), (offset_y + y), cur_world_x, cur_world_y);
                 ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-                this_cost = costmap_->getCost((x - offset_x), (y + offset_y));
+                this_cost = costmap_->getCost((offset_x - x), (offset_y + y));
                 ROS_INFO_STREAM("has cost: " << this_cost);
                 if (this_cost < pot_field_max_cost_){
                     ROS_INFO_STREAM("We found a valid cost!");
