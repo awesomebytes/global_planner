@@ -351,23 +351,79 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
       ROS_INFO_STREAM("cur_cost of initial goal: " << (int) cur_cost);
       ROS_INFO_STREAM("pot_field_max_cost_: " << pot_field_max_cost_);
 
-      ROS_INFO_STREAM("Looping over possible reachable pixels...");
-      for (int x = min_x; x < max_x; ++x) {
-        for (int y = min_y; y < max_y; ++y) {
-            ROS_INFO_STREAM("  x: " << x << " y: " << y);
+      if (cur_cost >= 250){
+          ROS_INFO_STREAM("Looping over possible reachable pixels as the goal is in obstacle...");
+          for (int x = 0; x < offset_x; x++){
+            for(int y = 0; y < offset_y; y++){
+                ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (y + offset_y));
+                costmap_->mapToWorld((x + offset_x), (y + offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
+                float this_cost = costmap_->getCost((x + offset_x), (y + offset_y));
+                ROS_INFO_STREAM("has cost: " << this_cost);
+                if (this_cost < pot_field_max_cost_){
+                    ROS_INFO_STREAM("We found a valid cost!");
+                    new_goal_x = cur_world_x;
+                    new_goal_y = cur_world_y;
+                    break;
+                }
+                
+                ROS_INFO_STREAM("  x: " << (x - offset_x) << " y: " << (y - offset_y));
+                costmap_->mapToWorld((x - offset_x), (y - offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
+                this_cost = costmap_->getCost((x - offset_x), (y - offset_y));
+                ROS_INFO_STREAM("has cost: " << this_cost);
+                if (this_cost < pot_field_max_cost_){
+                    ROS_INFO_STREAM("We found a valid cost!");
+                    new_goal_x = cur_world_x;
+                    new_goal_y = cur_world_y;
+                    break;
+                }
 
-            costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
-            ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
-            float this_cost = costmap_->getCost(x, y);
-            ROS_INFO_STREAM("has cost: " << this_cost);
-            if (this_cost < pot_field_max_cost_){
-                ROS_INFO_STREAM("We found a valid cost!");
-                new_goal_x = cur_world_x;
-                new_goal_y = cur_world_y;
-                break;
+                ROS_INFO_STREAM("  x: " << (x + offset_x) << " y: " << (y - offset_y));
+                costmap_->mapToWorld((x + offset_x), (y - offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
+                this_cost = costmap_->getCost((x + offset_x), (y - offset_y));
+                ROS_INFO_STREAM("has cost: " << this_cost);
+                if (this_cost < pot_field_max_cost_){
+                    ROS_INFO_STREAM("We found a valid cost!");
+                    new_goal_x = cur_world_x;
+                    new_goal_y = cur_world_y;
+                    break;
+                }
+
+                ROS_INFO_STREAM("  x: " << (x - offset_x) << " y: " << (y + offset_y));
+                costmap_->mapToWorld((x - offset_x), (y + offset_y), cur_world_x, cur_world_y);
+                ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
+                this_cost = costmap_->getCost((x - offset_x), (y + offset_y));
+                ROS_INFO_STREAM("has cost: " << this_cost);
+                if (this_cost < pot_field_max_cost_){
+                    ROS_INFO_STREAM("We found a valid cost!");
+                    new_goal_x = cur_world_x;
+                    new_goal_y = cur_world_y;
+                    break;
+                }
+
             }
-        }
-    }
+          }
+
+
+          // for (int x = min_x; x < max_x; ++x) {
+          //   for (int y = min_y; y < max_y; ++y) {
+          //       ROS_INFO_STREAM("  x: " << x << " y: " << y);
+
+          //       costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
+          //       ROS_INFO_STREAM("(x y to world) x: " << cur_world_x << " y: " << cur_world_y);
+          //       float this_cost = costmap_->getCost(x, y);
+          //       ROS_INFO_STREAM("has cost: " << this_cost);
+          //       if (this_cost < pot_field_max_cost_){
+          //           ROS_INFO_STREAM("We found a valid cost!");
+          //           new_goal_x = cur_world_x;
+          //           new_goal_y = cur_world_y;
+          //           break;
+          //       }
+          //   }
+          // }
+     }
 
 
     //   while(cur_cost > pot_field_max_cost_) {
