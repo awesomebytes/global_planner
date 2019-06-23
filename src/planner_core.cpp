@@ -319,6 +319,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
       unsigned int min_y, max_y;
 
       costmap_->worldToMap(cur_goal_x, cur_goal_y, offset_x, offset_y);
+      ROS_INFO_STREAM("(map) cur_goal_x: " << cur_goal_x << " cur_goal_y: " << cur_goal_y);
 
       // consider map size limits
       if ((int)offset_x - (max_num_cells / 2) < 0) {
@@ -347,12 +348,14 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
       // update costs and start potential field
       // calculation if we do not have a reachable goal
       worldCost(new_goal_x, new_goal_y, cur_cost);
-      ROS_INFO_STREAM("cur_cost of initial goal: " << cur_cost);
+      ROS_INFO_STREAM("cur_cost of initial goal: " << (int) cur_cost);
       ROS_INFO_STREAM("pot_field_max_cost_: " << pot_field_max_cost_);
 
+      ROS_INFO_STREAM("Looping over possible reachable pixels...");
       while(cur_cost > pot_field_max_cost_) {
         for (int x = min_x; x < max_x; ++x) {
           for (int y = min_y; y < max_y; ++y) {
+            ROS_INFO_STREAM("  x: " << x << " y: " << y);
 
             costmap_->mapToWorld(x, y, cur_world_x, cur_world_y);
             if (costmap_->getCost(x, y) < pot_field_max_cost_) {
