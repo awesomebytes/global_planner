@@ -310,6 +310,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
       int height = (int) costmap_->getSizeInCellsY();
 
       int max_num_cells = tolerance / costmap_->getResolution();
+      ROS_INFO_STREAM("max_num_cells: " << max_num_cells << " with tolerance: " << tolerance);
 
       unsigned int offset_x = 0;
       unsigned int offset_y = 0;
@@ -341,10 +342,13 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
       } else {
         max_y = offset_y + (max_num_cells / 2);
       }
+      ROS_INFO_STREAM("min_x: " << min_x << " max_x: " << max_x << " min_y: " << min_y << " max_y: " << max_y);
 
       // update costs and start potential field
       // calculation if we do not have a reachable goal
       worldCost(new_goal_x, new_goal_y, cur_cost);
+      ROS_INFO_STREAM("cur_cost of initial goal: " << cur_cost);
+      ROS_INFO_STREAM("pot_field_max_cost_: " << pot_field_max_cost_);
 
       while(cur_cost > pot_field_max_cost_) {
         for (int x = min_x; x < max_x; ++x) {
@@ -389,6 +393,8 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 
     goal_.pose.position.x = new_goal_x;
     goal_.pose.position.y = new_goal_y;
+
+    ROS_INFO_STREAM("new_goal_x: " << new_goal_x << " new_goal_y: " << new_goal_y);
 
     double wx = start.pose.position.x;
     double wy = start.pose.position.y;
